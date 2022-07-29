@@ -124,6 +124,7 @@ class ParticleNet(nn.Module):
 
     def __init__(self,
                  input_dims,
+                 lep_dims,
                  num_classes,
                  conv_params=[(7, (32, 32, 32)), (7, (64, 64, 64))],
                  fc_params=[(128, 0.1)],
@@ -167,6 +168,9 @@ class ParticleNet(nn.Module):
                                          nn.BatchNorm1d(channels), nn.ReLU(), nn.Dropout(drop_rate)))
             else:
                 fcs.append(nn.Sequential(nn.Linear(in_chn, channels), nn.ReLU(), nn.Dropout(drop_rate)))
+        fcs.append(nn.Sequential(nn.Linear(fc_params[-1][0]+lep_dims, fc_params[-1][0]+lep_dims), nn.ReLU(), nn.Dropout(fc_params[-1][1])))
+        fcs.append(nn.Sequential(nn.Linear(fc_params[-1][0]+lep_dims, fc_params[-1][0]), nn.ReLU(), nn.Dropout(fc_params[-1][1])))
+
         if self.for_segmentation:
             fcs.append(nn.Conv1d(fc_params[-1][0], num_classes, kernel_size=1))
         else:
@@ -175,7 +179,7 @@ class ParticleNet(nn.Module):
 
         self.for_inference = for_inference
 
-    def forward(self, points, features, mask=None):
+    def forward(self, points, features, lep_features, mask=None):
 #         print('points:\n', points)
 #         print('features:\n', features)
         if mask is None:
@@ -209,8 +213,14 @@ class ParticleNet(nn.Module):
                 x = fts.sum(dim=-1) / counts  # divide by the real counts
             else:
                 x = fts.mean(dim=-1)
-
-        output = self.fc(x)
+        for idx, layer in enumerate(self.fc):
+            if idx == 0:
+                x = layer(x)
+            if idx == 1:
+                x = layer(torch.cat((x, lep_features.sum(dim=-1)), dim=1))
+            if idx == 2:
+                x = layer(x)
+        output = x
         if self.for_inference:
             output = torch.softmax(output, dim=1)
         # print('output:\n', output)
@@ -237,6 +247,7 @@ class ParticleNetTagger(nn.Module):
     def __init__(self,
                  pf_features_dims,
                  sv_features_dims,
+                 lep_features_dims,
                  num_classes,
                  conv_params=[(7, (32, 32, 32)), (7, (64, 64, 64))],
                  fc_params=[(128, 0.1)],
@@ -245,14 +256,18 @@ class ParticleNetTagger(nn.Module):
                  use_counts=True,
                  pf_input_dropout=None,
                  sv_input_dropout=None,
+                 lep_input_dropout=None,
                  for_inference=False,
                  **kwargs):
         super(ParticleNetTagger, self).__init__(**kwargs)
         self.pf_input_dropout = nn.Dropout(pf_input_dropout) if pf_input_dropout else None
         self.sv_input_dropout = nn.Dropout(sv_input_dropout) if sv_input_dropout else None
+        self.lep_input_dropout = nn.Dropout(lep_input_dropout) if lep_input_dropout else None
         self.pf_conv = FeatureConv(pf_features_dims, 32)
         self.sv_conv = FeatureConv(sv_features_dims, 32)
+        self.lep_conv = FeatureConv(lep_features_dims, 64)
         self.pn = ParticleNet(input_dims=32,
+                              lep_dims=64,
                               num_classes=num_classes,
                               conv_params=conv_params,
                               fc_params=fc_params,
@@ -261,7 +276,7 @@ class ParticleNetTagger(nn.Module):
                               use_counts=use_counts,
                               for_inference=for_inference)
 
-    def forward(self, pf_points, pf_features, pf_mask, sv_points, sv_features, sv_mask):
+    def forward(self, pf_points, pf_features, pf_mask, sv_points, sv_features, sv_mask, lep_features):
         if self.pf_input_dropout:
             pf_mask = (self.pf_input_dropout(pf_mask) != 0).float()
             pf_points *= pf_mask
@@ -273,5 +288,6 @@ class ParticleNetTagger(nn.Module):
 
         points = torch.cat((pf_points, sv_points), dim=2)
         features = torch.cat((self.pf_conv(pf_features * pf_mask) * pf_mask, self.sv_conv(sv_features * sv_mask) * sv_mask), dim=2)
+        lep_feat = self.lep_conv(lep_features)
         mask = torch.cat((pf_mask, sv_mask), dim=2)
-        return self.pn(points, features, mask)
+        return self.pn(points, features, lep_feat, mask)

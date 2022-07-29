@@ -1,0 +1,128 @@
+treename: null
+selection: (lepton_pt>20) & (lepton_pt<1000) & (lepton_eta>-2.4) & (lepton_eta<2.4)
+test_time_selection: null
+preprocess:
+  method: manual
+  data_fraction: null
+  params: null
+new_variables:
+  pfcand_mask: awkward.JaggedArray.ones_like(PFCand_eta_rel)
+  sv_mask: awkward.JaggedArray.ones_like(SV_eta_rel)
+  _label_: np.stack([label_Muon_Prompt,label_Muon_fromTau,label_Muon_fromHFHadron,label_Muon_fromLFHadron,label_Muon_unknown,label_Muon_fromPhoton],
+    axis=1).argmax(1)
+  _labelcheck_: np.stack([label_Muon_Prompt,label_Muon_fromTau,label_Muon_fromHFHadron,label_Muon_fromLFHadron,label_Muon_unknown,label_Muon_fromPhoton],
+    axis=1).sum(1)
+inputs:
+  pf_points:
+    length: 100
+    vars:
+    - PFCand_eta_rel
+    - PFCand_phiAtVtx_rel
+  pf_features:
+    length: 100
+    vars:
+    - PFCand_eta_rel
+    - PFCand_phiAtVtx_rel
+    - PFCand_deltaR
+    - PFCand_puppiWeightNoLep
+    - PFCand_dzSig
+    - PFCand_dxySig
+  pf_mask:
+    length: 100
+    vars:
+    - pfcand_mask
+  sv_points:
+    length: 10
+    vars:
+    - SV_eta_rel
+    - SV_phi_rel
+  sv_features:
+    length: 10
+    vars:
+    - SV_eta_rel
+    - SV_phi_rel
+    - SV_deltaR
+    - SV_ndof
+    - SV_pt_rel
+    - SV_mass
+    - SV_dxy
+    - SV_ntracks
+    - SV_d3dSig
+  sv_mask:
+    length: 10
+    vars:
+    - sv_mask
+  lep_features:
+    length: 1
+    vars:
+    - lepton_chi2
+    - lepton_dxy
+    - lepton_dz
+    - lepton_e_ECAL
+    - lepton_e_HCAL
+    - lepton_hit
+    - lepton_hoe
+    - lepton_ip3d
+    - lepton_jetbtag
+    - lepton_jetPtRelv2_log
+    - lepton_lostHits
+    - lepton_ndof
+    - lepton_nStations
+    - lepton_nTrackerLayers
+    - lepton_pixhit
+    - lepton_posmatch
+    - lepton_segmentComp
+    - lepton_isGoodGlobal
+    - lepton_isHighPt
+labels:
+  type: simple
+  value:
+  - label_Muon_Prompt
+  - label_Muon_fromTau
+  - label_Muon_fromHFHadron
+  - label_Muon_fromLFHadron
+  - label_Muon_unknown
+  - label_Muon_fromPhoton
+observers:
+- nPFCand
+- lepton_pt
+monitor_variables: []
+weights:
+  use_precomputed_weights: false
+  reweight_method: flat
+  reweight_vars:
+    lepton_pt:
+    - 20
+    - 50
+    - 100
+    - 200
+    - 1000
+    lepton_eta:
+    - -2.4
+    - 0
+    - 2.4
+  reweight_classes:
+  - label_Muon_Prompt
+  - label_Muon_unknown
+  class_weights:
+  - 1
+  - 1
+  reweight_hists:
+    label_Muon_Prompt:
+    - - 0.00010091118747368455
+      - 0.00010131179442396387
+    - - 0.00013863299682270736
+      - 0.00013932820002082735
+    - - 0.0004873128200415522
+      - 0.000490815844386816
+    - - 0.005944110453128815
+      - 0.00589091656729579
+    label_Muon_unknown:
+    - - 0.007526131812483072
+      - 0.007637005764991045
+    - - 0.04221498221158981
+      - 0.04612099379301071
+    - - 0.20249998569488525
+      - 0.1489655077457428
+    - - 0.8999999761581421
+      - 0.8639999628067017
