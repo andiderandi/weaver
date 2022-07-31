@@ -168,7 +168,7 @@ class ParticleNet(nn.Module):
                                          nn.BatchNorm1d(channels), nn.ReLU(), nn.Dropout(drop_rate)))
             else:
                 fcs.append(nn.Sequential(nn.Linear(in_chn, channels), nn.ReLU(), nn.Dropout(drop_rate)))
-        fcs.append(nn.Sequential(nn.Linear(fc_params[-1][0]+lep_dims, fc_params[-1][0]+lep_dims), nn.ReLU(), nn.Dropout(fc_params[-1][1])))
+        fcs.append(nn.Sequential(nn.Linear(fc_params[-1][0]+lep_dims, fc_params[-1][0]+lep_dims), nn.ReLU(), nn.Dropout(fc_params[-1][1]))) #add additional layer for adding the lepton features
         fcs.append(nn.Sequential(nn.Linear(fc_params[-1][0]+lep_dims, fc_params[-1][0]), nn.ReLU(), nn.Dropout(fc_params[-1][1])))
 
         if self.for_segmentation:
@@ -214,11 +214,9 @@ class ParticleNet(nn.Module):
             else:
                 x = fts.mean(dim=-1)
         for idx, layer in enumerate(self.fc):
-            if idx == 0:
-                x = layer(x)
             if idx == 1:
-                x = layer(torch.cat((x, lep_features.sum(dim=-1)), dim=1))
-            if idx == 2:
+                x = layer(torch.cat((x, lep_features.sum(dim=-1)), dim=1)) #add lepton features
+            else:            
                 x = layer(x)
         output = x
         if self.for_inference:
