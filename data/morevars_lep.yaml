@@ -39,14 +39,14 @@ inputs:
          - PFCand_puppiWeightNoLep
          - PFCand_dzSig
          - PFCand_dxySig
-         #- PFCand_hcalFractionCalib
+         - PFCand_hcalFractionCalib
          #- PFCand_lostInnerHits
-         #- PFCand_pixelhits
-         #- PFCand_nTrackerLayers
-         #- PFCand_isElectron
-         #- PFCand_isMuon
-         #- PFCand_isChargedHadron
-         #- PFCand_fromPV
+         - PFCand_pixelhits
+         - PFCand_nTrackerLayers
+         - PFCand_isElectron
+         - PFCand_isMuon
+         - PFCand_isChargedHadron
+         - PFCand_fromPV
    pf_mask:
       length: 100
       vars: 
@@ -68,7 +68,7 @@ inputs:
          - SV_dxy
          - SV_ntracks
          - SV_d3dSig
-         #- SV_cospAngle
+         - SV_cospAngle
 
    sv_mask:
       length: 10
@@ -121,7 +121,6 @@ observers:
    - PV_npvsGood
    - lepton_minisoall
    - lepton_isMedium
-   - lepton_isLoose
    - lepton_sip3d_new
    - lepton_dz_new
    - lepton_dxy_new
