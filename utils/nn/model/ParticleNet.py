@@ -124,10 +124,11 @@ class ParticleNet(nn.Module):
 
     def __init__(self,
                  input_dims,
-                 lep_dims,
                  num_classes,
                  conv_params=[(7, (32, 32, 32)), (7, (64, 64, 64))],
                  fc_params=[(128, 0.1)],
+                 global_params=[(128, 0.1)],
+                 fully_global_params=[(128, 0.1)],
                  use_fusion=True,
                  use_fts_bn=True,
                  use_counts=True,
@@ -168,8 +169,11 @@ class ParticleNet(nn.Module):
                                          nn.BatchNorm1d(channels), nn.ReLU(), nn.Dropout(drop_rate)))
             else:
                 fcs.append(nn.Sequential(nn.Linear(in_chn, channels), nn.ReLU(), nn.Dropout(drop_rate)))
-        fcs.append(nn.Sequential(nn.Linear(fc_params[-1][0]+lep_dims, fc_params[-1][0]+lep_dims), nn.ReLU(), nn.Dropout(fc_params[-1][1]))) #add additional layer for adding the lepton features
-        fcs.append(nn.Sequential(nn.Linear(fc_params[-1][0]+lep_dims, fc_params[-1][0]), nn.ReLU(), nn.Dropout(fc_params[-1][1])))
+        for idx, layer_param in enumerate(global_params):
+            if idx==len(global_params)-1:
+                fcs.append(nn.Sequential(nn.Linear(fc_params[-1][0]+global_params[idx][0], fc_params[-1][0]), nn.ReLU(), nn.Dropout(global_params[idx][1])))
+            else:
+                fcs.append(nn.Sequential(nn.Linear(fc_params[-1][0]+global_params[idx][0], fc_params[-1][0]+global_params[idx+1][0]), nn.ReLU(), nn.Dropout(global_params[idx][1]))) #add additional layer for adding the lepton features
 
         if self.for_segmentation:
             fcs.append(nn.Conv1d(fc_params[-1][0], num_classes, kernel_size=1))
@@ -245,30 +249,29 @@ class ParticleNetTagger(nn.Module):
     def __init__(self,
                  pf_features_dims,
                  sv_features_dims,
-                 lep_features_dims,
                  num_classes,
                  conv_params=[(7, (32, 32, 32)), (7, (64, 64, 64))],
                  fc_params=[(128, 0.1)],
+                 global_params=[(128, 0.1)],
+                 fully_global_params=[(128, 0.1)],
                  use_fusion=True,
                  use_fts_bn=True,
                  use_counts=True,
                  pf_input_dropout=None,
                  sv_input_dropout=None,
-                 lep_input_dropout=None,
                  for_inference=False,
                  **kwargs):
         super(ParticleNetTagger, self).__init__(**kwargs)
         self.pf_input_dropout = nn.Dropout(pf_input_dropout) if pf_input_dropout else None
         self.sv_input_dropout = nn.Dropout(sv_input_dropout) if sv_input_dropout else None
-        self.lep_input_dropout = nn.Dropout(lep_input_dropout) if lep_input_dropout else None
         self.pf_conv = FeatureConv(pf_features_dims, 32)
         self.sv_conv = FeatureConv(sv_features_dims, 32)
-        self.lep_conv = FeatureConv(lep_features_dims, 64)
         self.pn = ParticleNet(input_dims=32,
-                              lep_dims=64,
                               num_classes=num_classes,
                               conv_params=conv_params,
                               fc_params=fc_params,
+                              global_params=global_params,
+                              fully_global_params=fully_global_params,
                               use_fusion=use_fusion,
                               use_fts_bn=use_fts_bn,
                               use_counts=use_counts,
@@ -286,6 +289,5 @@ class ParticleNetTagger(nn.Module):
 
         points = torch.cat((pf_points, sv_points), dim=2)
         features = torch.cat((self.pf_conv(pf_features * pf_mask) * pf_mask, self.sv_conv(sv_features * sv_mask) * sv_mask), dim=2)
-        lep_feat = self.lep_conv(lep_features)
         mask = torch.cat((pf_mask, sv_mask), dim=2)
-        return self.pn(points, features, lep_feat, mask)
+        return self.pn(points, features, lep_features, mask)
