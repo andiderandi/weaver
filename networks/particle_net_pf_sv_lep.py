@@ -13,11 +13,12 @@ def get_model(data_config, **kwargs):
     print ('data_config: ', data_config)
     pf_features_dims = len(data_config.input_dicts['pf_features'])
     sv_features_dims = len(data_config.input_dicts['sv_features'])
+    global_features_dims = len(data_config.input_dicts['lep_features']) if data_config.input_dicts['lep_features'] else None
     num_classes = len(data_config.label_value)
-    global_params=[(len(data_config.input_dicts['lep_features']), 0.1), (128,0.1)]
+    global_params=[(128, 0.1), (256,0.1)]
     fully_global_params=[(256,0.1), (256, 0.1)]
-    model = ParticleNetTagger(pf_features_dims, sv_features_dims, num_classes,
-                              conv_params, fc_params, global_params, fully_global_params,
+    model = ParticleNetTagger(pf_features_dims, sv_features_dims, global_features_dims, num_classes,
+                              conv_params, fc_params, global_params, fully_global_params, 
                               use_fusion=use_fusion,
                               use_fts_bn=kwargs.get('use_fts_bn', False),
                               use_counts=kwargs.get('use_counts', True),

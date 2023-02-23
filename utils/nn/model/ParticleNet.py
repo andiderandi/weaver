@@ -124,6 +124,7 @@ class ParticleNet(nn.Module):
 
     def __init__(self,
                  input_dims,
+                 global_features_dims,
                  num_classes,
                  conv_params=[(7, (32, 32, 32)), (7, (64, 64, 64))],
                  fc_params=[(128, 0.1)],
@@ -169,9 +170,10 @@ class ParticleNet(nn.Module):
                                          nn.BatchNorm1d(channels), nn.ReLU(), nn.Dropout(drop_rate)))
             else:
                 fcs.append(nn.Sequential(nn.Linear(in_chn, channels), nn.ReLU(), nn.Dropout(drop_rate)))
+        fcs.append(nn.Sequential(nn.Linear(fc_params[-1][0]+global_features_dims, fc_params[-1][0]+global_params[idx][0]), nn.ReLU(), nn.Dropout(global_params[idx][1])))
         for idx, layer_param in enumerate(global_params):
             if idx==len(global_params)-1:
-                fcs.append(nn.Sequential(nn.Linear(fc_params[-1][0]+global_params[idx][0], fc_params[-1][0]), nn.ReLU(), nn.Dropout(global_params[idx][1])))
+                fcs.append(nn.Sequential(nn.Linear(fc_params[-1][0]+global_params[-1][0], fc_params[-1][0]), nn.ReLU(), nn.Dropout(global_params[idx][1])))
             else:
                 fcs.append(nn.Sequential(nn.Linear(fc_params[-1][0]+global_params[idx][0], fc_params[-1][0]+global_params[idx+1][0]), nn.ReLU(), nn.Dropout(global_params[idx][1]))) #add additional layer for adding the lepton features
 
@@ -249,6 +251,7 @@ class ParticleNetTagger(nn.Module):
     def __init__(self,
                  pf_features_dims,
                  sv_features_dims,
+                 global_features_dims,
                  num_classes,
                  conv_params=[(7, (32, 32, 32)), (7, (64, 64, 64))],
                  fc_params=[(128, 0.1)],
@@ -267,6 +270,7 @@ class ParticleNetTagger(nn.Module):
         self.pf_conv = FeatureConv(pf_features_dims, 32)
         self.sv_conv = FeatureConv(sv_features_dims, 32)
         self.pn = ParticleNet(input_dims=32,
+                              global_features_dims=global_features_dims,
                               num_classes=num_classes,
                               conv_params=conv_params,
                               fc_params=fc_params,
